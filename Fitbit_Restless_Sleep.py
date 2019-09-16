@@ -69,25 +69,6 @@ hr_df = pd.DataFrame(hr_data['activities-heart-intraday']['dataset'])
 hr_df['time'] = hr_df['time'].apply(pd.to_datetime)
 hr_df = hr_df.set_index('time')
 
-######################
-# LOOP FOR ONE MONTH # can also use start/end
-######################
-#start_date = format_date((2019, 5, 25))
-#date_range = pd.date_range(start_date, periods = 2)
-#sleep_df = pd.DataFrame()
-#for date in date_range:
-#    sleep_data = auth2_client.sleep(date)
-#    try:
-#        sleep_df = sleep_df.append(pd.DataFrame(
-#                                   sleep_data['sleep'][0]['levels']['data']),
-#                                   ignore_index = True)
-#        plot_sleep_levels(sleep_data)
-#    except IndexError:
-#        pass
-#
-#sleep_df['dateTime'] = sleep_df['dateTime'].apply(pd.to_datetime)
-#sleep_df = sleep_df.set_index('dateTime')
-
 #####################################
 # GET SLEEP DATA FOR (MAX) 100 DAYS #
 #####################################
@@ -114,18 +95,21 @@ sleep_summary_df.drop(columns = ['asleep', 'awake', 'restless'],
 
 # Plot wake, light, deep, rem on one axis, sleep efficiency on other
 fig, ax1 = plt.subplots(figsize = (10, 10))
-ax1.set_title('Sleep Efficiency', fontdict = {'fontsize': 15})
+ax1.set_title('Sleep Efficiency',
+              fontdict = {'fontsize': 20})
 for i in ['wake', 'light', 'deep', 'rem']:
     ax1.plot(sleep_summary_df.index[::-1],
              sleep_summary_df[i],
              linewidth = '2',
              label = i)
-ax1.set_xlabel('Date')
+ax1.set_xlabel('Date',
+               fontdict = {'fontsize': 20})
 ax1.set_xticklabels(labels = sleep_summary_df.index[::-1],
                     rotation = 45,
                     ha = 'right')
 ax1.set_ylim(0, 500)
-ax1.set_ylabel('Minutes per Stage')
+ax1.set_ylabel('Minutes per Stage',
+               fontdict = {'fontsize': 15})
 ax2 = plt.twinx(ax = ax1)
 ax2.plot(sleep_summary_df.index[::-1],
          sleep_summary_df['efficiency'],
@@ -133,7 +117,8 @@ ax2.plot(sleep_summary_df.index[::-1],
          linewidth = '2',
          label = 'efficiency')
 ax2.set_ylim(0, 100)
-ax2.set_ylabel('Sleep Efficiency')
+ax2.set_ylabel('Sleep Efficiency',
+               fontdict = {'fontsize': 15})
 ax1.grid(which = 'major', axis = 'both')
 lines_1, labels_1 = ax1.get_legend_handles_labels()
 lines_2, labels_2 = ax2.get_legend_handles_labels()
