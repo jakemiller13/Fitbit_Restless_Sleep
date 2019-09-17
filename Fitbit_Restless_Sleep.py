@@ -8,10 +8,11 @@ Created on Tue Sep 10 13:26:38 2019
 import fitbit
 from fitbit import gather_keys_oauth2 as Oauth2
 import pandas as pd
+import numpy as np
 import datetime
 import matplotlib.pyplot as plt
 
-# Gathered from Fitbit web app
+# Need to get specifics from https://dev.fitbit.com/apps
 CLIENT_ID = input('Client ID: ')
 CLIENT_SECRET = input('Client Secret: ')
 
@@ -59,7 +60,14 @@ def plot_sleep_levels(sleep_data):
     plt.grid(axis = 'y')
     plt.title('Minutes per Stage [{}]'.format(date.date()))
     plt.show()
-    
+
+############################
+# DEFINTE DATES TO LOOK AT #
+############################
+start_date = datetime.datetime(2018, 3, 31)
+period = 30
+end_date = start_date + datetime.timedelta(days = period)
+
 ###############
 # GET HR DATA #
 ###############
@@ -69,52 +77,77 @@ hr_df = pd.DataFrame(hr_data['activities-heart-intraday']['dataset'])
 hr_df['time'] = hr_df['time'].apply(pd.to_datetime)
 hr_df = hr_df.set_index('time')
 
+###########################
+# GET ACTIVE MINUTES DATA #
+###########################
+activity_level_df = pd.DataFrame()
+
+# Recall 1440 minutes per day, so Sedentary = 1440 - (other levels)
+activity_level = ['LightlyActive', 'FairlyActive', 'VeryActive']
+for level in activity_level:
+    activity_data = auth2_client.time_series('activities/minutes{}'\
+                                             .format(level),
+                                             base_date = start_date,
+                                             end_date = end_date)
+    activity_df = pd.DataFrame(activity_data['activities-minutes{}'.\
+                                             format(level)]).\
+                               set_index('dateTime').\
+                               rename({'value': level}, axis = 1)
+    activity_df[level] = pd.to_numeric(activity_df[level])
+    activity_level_df = activity_level_df.join(activity_df, how = 'outer')
+activity_level_df.index = pd.to_datetime(activity_level_df.index)
+
 #####################################
 # GET SLEEP DATA FOR (MAX) 100 DAYS #
 #####################################
-start_date = datetime.datetime(2018, 2, 25)
-period = 100
-end_date = start_date + datetime.timedelta(days = period)
+sleep_summary_df = pd.DataFrame()
 sleep_data = auth2_client.time_series('sleep',
                                       base_date = start_date,
                                       end_date = end_date)
-
-# Pull out sleep summary
-sleep_summary_df = pd.DataFrame()
-for date in sleep_data['sleep']:
+for date in sleep_data['sleep'][::-1]:
     temp_df = pd.DataFrame(date['levels']['summary']).loc['minutes']
     temp_df = temp_df.append(pd.Series(date['efficiency'])\
                              .rename({0: 'efficiency'}))
     minutes_data = pd.Series(temp_df.rename(date['dateOfSleep']))
     sleep_summary_df = sleep_summary_df.append(minutes_data)
+sleep_summary_df.index.name = 'dateTime'
+sleep_summary_df = sleep_summary_df[['efficiency', 'wake', 'light', 'deep',
+                                     'rem', 'awake', 'restless', 'asleep']]
 sleep_summary_df.index = pd.to_datetime(sleep_summary_df.index)
 
-# This drops "old" style columns but keeps NaN to show gaps in information
+# If Fitbit can't register HR, only tracks "asleep", "awake", "restless"
+# Don't correspond to more detailed info (e.g wake vs awake different values)
 sleep_summary_df.drop(columns = ['asleep', 'awake', 'restless'],
                       inplace = True)
+
+# TODO Improve this plot
+sleep_summary_df[['wake', 'light', 'deep', 'rem']].plot(kind = 'box')
 
 # Plot wake, light, deep, rem on one axis, sleep efficiency on other
 fig, ax1 = plt.subplots(figsize = (10, 10))
 ax1.set_title('Sleep Efficiency',
               fontdict = {'fontsize': 20})
 for i in ['wake', 'light', 'deep', 'rem']:
-    ax1.plot(sleep_summary_df.index[::-1],
+    ax1.plot(sleep_summary_df.index,
              sleep_summary_df[i],
              linewidth = '2',
+             linestyle = '--',
+             marker = '.',
+             markersize = 10,
              label = i)
 ax1.set_xlabel('Date',
                fontdict = {'fontsize': 20})
-ax1.set_xticklabels(labels = sleep_summary_df.index[::-1],
+ax1.set_xticklabels(labels = sleep_summary_df.index,
                     rotation = 45,
                     ha = 'right')
 ax1.set_ylim(0, 500)
 ax1.set_ylabel('Minutes per Stage',
                fontdict = {'fontsize': 15})
 ax2 = plt.twinx(ax = ax1)
-ax2.plot(sleep_summary_df.index[::-1],
+ax2.plot(sleep_summary_df.index,
          sleep_summary_df['efficiency'],
          color = 'black',
-         linewidth = '2',
+         linewidth = '3',
          label = 'efficiency')
 ax2.set_ylim(0, 100)
 ax2.set_ylabel('Sleep Efficiency',
@@ -129,4 +162,12 @@ ax2.legend(lines_1 + lines_2,
            ncol = 5,
            fancybox = True,
            shadow = True)
+#plt.show()
+
+###################################
+# STACKED BAR FOR ACTIVITY LEVELS #
+###################################
+fig, ax = plt.subplots(figsize = (10, 10))
+activity_level_df.plot.bar(ax = ax,
+                           stacked = True)
 plt.show()
