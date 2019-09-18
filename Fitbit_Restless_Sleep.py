@@ -171,3 +171,59 @@ fig, ax = plt.subplots(figsize = (10, 10))
 activity_level_df.plot.bar(ax = ax,
                            stacked = True)
 plt.show()
+
+
+# TODO clean this up
+##################################################
+# PLOT SLEEP EFFICIENCY ON TOP OF ACTIVITY LEVEL #
+##################################################
+fig, axs = plt.subplots(2, gridspec_kw = {'hspace': 0}, figsize = (10, 10))
+fig.suptitle('Sleep  Efficiency', fontsize = 20)
+for i in ['wake', 'light', 'deep', 'rem']:
+    axs[0].plot(sleep_summary_df.index,
+             sleep_summary_df[i],
+             linewidth = '2',
+             linestyle = '--',
+             marker = '.',
+             markersize = 10,
+             label = i)
+axs[0].set_xlabel('Date',
+               fontdict = {'fontsize': 20})
+axs[0].set_xticklabels(labels = sleep_summary_df.index,
+                    rotation = 45,
+                    ha = 'right')
+axs[0].set_ylim(0, 500)
+ax2 = plt.twinx(ax = axs[0])
+ax2.plot(sleep_summary_df.index,
+         sleep_summary_df['efficiency'],
+         color = 'black',
+         linewidth = '3',
+         label = 'efficiency')
+ax2.set_ylim(0, 100)
+ax2.set_ylabel('Sleep Efficiency',
+               fontdict = {'fontsize': 15})
+axs[0].grid(which = 'major', axis = 'both')
+lines_1, labels_1 = axs[0].get_legend_handles_labels()
+lines_2, labels_2 = ax2.get_legend_handles_labels()
+ax2.legend(lines_1 + lines_2,
+           labels_1 + labels_2,
+           loc = 'lower center',
+           bbox_to_anchor = (0.5, 1.0),
+           ncol = 5,
+           fancybox = True,
+           shadow = True)
+
+###################################
+# STACKED BAR FOR ACTIVITY LEVELS #
+###################################
+activity_level_df.plot.bar(ax = axs[1],
+                           stacked = True)
+axs[1].set_xlabel('Date',
+               fontdict = {'fontsize': 20})
+axs[1].legend(loc = 'lower center',
+           bbox_to_anchor = (0.5, 0.0),
+           ncol = 3,
+           fancybox = True,
+           shadow = True)
+fig.text(0.05, 0.4, 'Minutes per Stage', ha = 'center', rotation = 'vertical', fontdict = {'fontsize': 15})
+plt.show()
