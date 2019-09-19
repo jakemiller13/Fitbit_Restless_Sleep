@@ -225,5 +225,6 @@ axs[1].legend(loc = 'lower center',
            ncol = 3,
            fancybox = True,
            shadow = True)
+axs[1].grid(which = 'major', axis = 'both')
 fig.text(0.05, 0.4, 'Minutes per Stage', ha = 'center', rotation = 'vertical', fontdict = {'fontsize': 15})
 plt.show()
