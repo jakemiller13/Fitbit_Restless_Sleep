@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import datetime
 import matplotlib.pyplot as plt
+import matplotlib.ticker as plticker
 
 # Need to get specifics from https://dev.fitbit.com/apps
 CLIENT_ID = input('Client ID: ')
@@ -177,9 +178,46 @@ plt.show()
 
 
 # TODO clean this up
+# TODO may need to recreate this dataframe
+# TODO x labels aren't lining up well
 ##################################################
 # PLOT SLEEP EFFICIENCY ON TOP OF ACTIVITY LEVEL #
 ##################################################
+fig, ax1 = plt.subplots(figsize = (10, 10))
+ax2 = plt.twinx(ax = ax1)
+temp_df[['LightlyActive', 'FairlyActive', 'VeryActive']].plot(ax = ax1,
+                                                              kind = 'bar',
+                                                              stacked = True,
+                                                              cmap = 'Pastel2')
+temp_df[['wake', 'light', 'deep', 'rem']].plot(ax = ax1,
+                                               linewidth = '2',
+                                               linestyle = '--',
+                                               marker = '.',
+                                               markersize = 10)
+ax1.set_xticklabels(labels = temp_df['dateTime'], rotation = 45)
+temp_df['efficiency'].plot(ax = ax2,
+                           linewidth = '4',
+                           color = 'k')
+ax2.set_ylim(0, 100)
+lines_1, labels_1 = ax1.get_legend_handles_labels()
+lines_2, labels_2 = ax2.get_legend_handles_labels()
+ax1.legend(lines_1 + lines_2,
+           labels_1 + labels_2,
+           loc = 'lower center',
+           bbox_to_anchor = (0.5, 1.0),
+           ncol = 5,
+           fancybox = True,
+           shadow = True)
+plt.show()
+
+
+
+
+
+
+
+
+
 fig, axs = plt.subplots(2, gridspec_kw = {'hspace': 0}, figsize = (10, 10))
 fig.suptitle('Sleep  Efficiency', fontsize = 20)
 for i in ['wake', 'light', 'deep', 'rem']:
@@ -268,11 +306,3 @@ temp_df = pd.DataFrame(data)
 temp_df = activity_level_df.join(sleep_summary_df.set_index('dateTime'),
                                  on = 'dateTime')
 
-fig, ax1 = plt.subplots(figsize = (10, 10))
-ax2 = plt.twinx(ax = ax1)
-temp_df[['LightlyActive', 'FairlyActive', 'VeryActive']].\
-         plot(kind = 'bar', stacked = True, ax = ax1)
-temp_df[['wake', 'light', 'deep', 'rem']].plot(ax = ax1, alpha = 0.5)
-temp_df['efficiency'].plot(ax = ax2)
-ax1.set_xticklabels(labels = temp_df['dateTime'], rotation = 45)
-plt.show()
