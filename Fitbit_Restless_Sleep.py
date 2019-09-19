@@ -228,3 +228,22 @@ axs[1].legend(loc = 'lower center',
 axs[1].grid(which = 'major', axis = 'both')
 fig.text(0.05, 0.4, 'Minutes per Stage', ha = 'center', rotation = 'vertical', fontdict = {'fontsize': 15})
 plt.show()
+
+'''
+data = {'LightlyActive': [314, 253, 282, 292], 'FairlyActive': [34, 22, 26, 35], 'VeryActive': [123, 102, 85, 29], 'efficiency': [93.0, 96.0, 93.0, 96.0], 'wake': [55.0, 44.0, 47.0, 43.0], 'light': [225.0, 260.0, 230.0, 205.0], 'deep': [72.0, 50.0, 60.0, 81.0], 'rem': [99.0, 72.0, 97.0, 85.0]}
+date1 = pd.datetime(2018, 4, 10)
+date = [date1 + pd.Timedelta(days = i) for i in range(4)]
+temp_df = pd.DataFrame(data, index = date)
+
+
+
+fig, ax1 = plt.subplots(figsize = (10, 10))
+fig.set_facecolor('red')
+ax2 = plt.twinx(ax = ax1)
+ax1.patch.set_facecolor('blue')
+ax1.patch.set_alpha(0.5)
+temp_df[['LightlyActive', 'FairlyActive', 'VeryActive']].plot(kind = 'bar', stacked = True, ax = ax1)
+temp_df[['wake', 'light', 'deep', 'rem']].plot(ax = ax1, alpha = 0.5)
+temp_df['efficiency'].plot(ax = ax2)
+plt.show()
+'''
