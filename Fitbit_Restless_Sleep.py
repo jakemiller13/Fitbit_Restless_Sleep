@@ -91,11 +91,13 @@ for level in activity_level:
                                              end_date = end_date)
     activity_df = pd.DataFrame(activity_data['activities-minutes{}'.\
                                              format(level)]).\
-                               set_index('dateTime').\
                                rename({'value': level}, axis = 1)
     activity_df[level] = pd.to_numeric(activity_df[level])
-    activity_level_df = activity_level_df.join(activity_df, how = 'outer')
-activity_level_df.index = pd.to_datetime(activity_level_df.index)
+    activity_level_df = activity_level_df.join(activity_df.\
+                                               set_index('dateTime'),
+                                               how = 'outer')
+activity_level_df = activity_level_df.reset_index()
+activity_level_df['dateTime'] = pd.to_datetime(activity_level_df['dateTime'])
 
 #####################################
 # GET SLEEP DATA FOR (MAX) 100 DAYS #
@@ -110,10 +112,11 @@ for date in sleep_data['sleep'][::-1]:
                              .rename({0: 'efficiency'}))
     minutes_data = pd.Series(temp_df.rename(date['dateOfSleep']))
     sleep_summary_df = sleep_summary_df.append(minutes_data)
-sleep_summary_df.index.name = 'dateTime'
 sleep_summary_df = sleep_summary_df[['efficiency', 'wake', 'light', 'deep',
                                      'rem', 'awake', 'restless', 'asleep']]
-sleep_summary_df.index = pd.to_datetime(sleep_summary_df.index)
+sleep_summary_df = sleep_summary_df.reset_index()\
+                                   .rename({'index':'dateTime'}, axis = 1)
+sleep_summary_df['dateTime'] = pd.to_datetime(sleep_summary_df['dateTime'])
 
 # If Fitbit can't register HR, only tracks "asleep", "awake", "restless"
 # Don't correspond to more detailed info (e.g wake vs awake different values)
@@ -187,6 +190,7 @@ for i in ['wake', 'light', 'deep', 'rem']:
              marker = '.',
              markersize = 10,
              label = i)
+axs[0].set_xlim(sleep_summary_df.index[0], sleep_summary_df.index[-1])
 axs[0].set_xlabel('Date',
                fontdict = {'fontsize': 20})
 axs[0].set_xticklabels(labels = sleep_summary_df.index,
@@ -220,6 +224,7 @@ activity_level_df.plot.bar(ax = axs[1],
                            stacked = True)
 axs[1].set_xlabel('Date',
                fontdict = {'fontsize': 20})
+axs[1].set_xlim(sleep_summary_df.index[0], sleep_summary_df.index[-1])
 axs[1].legend(loc = 'lower center',
            bbox_to_anchor = (0.5, 0.0),
            ncol = 3,
@@ -247,3 +252,27 @@ temp_df[['wake', 'light', 'deep', 'rem']].plot(ax = ax1, alpha = 0.5)
 temp_df['efficiency'].plot(ax = ax2)
 plt.show()
 '''
+
+date1 = pd.datetime(2018, 4, 10)
+data = {'LightlyActive': [314, 253, 282, 292],
+        'FairlyActive': [34, 22, 26, 35],
+        'VeryActive': [123, 102, 85, 29],
+        'efficiency': [93.0, 96.0, 93.0, 96.0],
+        'wake': [55.0, 44.0, 47.0, 43.0],
+        'light': [225.0, 260.0, 230.0, 205.0],
+        'deep': [72.0, 50.0, 60.0, 81.0],
+        'rem': [99.0, 72.0, 97.0, 85.0],
+        'date': [date1 + pd.Timedelta(days = i) for i in range(4)]}
+temp_df = pd.DataFrame(data)
+
+temp_df = activity_level_df.join(sleep_summary_df.set_index('dateTime'),
+                                 on = 'dateTime')
+
+fig, ax1 = plt.subplots(figsize = (10, 10))
+ax2 = plt.twinx(ax = ax1)
+temp_df[['LightlyActive', 'FairlyActive', 'VeryActive']].\
+         plot(kind = 'bar', stacked = True, ax = ax1)
+temp_df[['wake', 'light', 'deep', 'rem']].plot(ax = ax1, alpha = 0.5)
+temp_df['efficiency'].plot(ax = ax2)
+ax1.set_xticklabels(labels = temp_df['dateTime'], rotation = 45)
+plt.show()
