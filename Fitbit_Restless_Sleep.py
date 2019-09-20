@@ -100,6 +100,8 @@ for level in activity_level:
 activity_level_df = activity_level_df.reset_index()
 activity_level_df['dateTime'] = pd.to_datetime(activity_level_df['dateTime'])
 
+# TODO clean up so these dataframes get created in similar ways
+
 #####################################
 # GET SLEEP DATA FOR (MAX) 100 DAYS #
 #####################################
@@ -127,77 +129,30 @@ sleep_summary_df.drop(columns = ['asleep', 'awake', 'restless'],
 # TODO Improve this plot
 sleep_summary_df[['wake', 'light', 'deep', 'rem']].plot(kind = 'box')
 
-# Plot wake, light, deep, rem on one axis, sleep efficiency on other
-fig, ax1 = plt.subplots(figsize = (10, 10))
-ax1.set_title('Sleep Efficiency',
-              fontdict = {'fontsize': 20})
-for i in ['wake', 'light', 'deep', 'rem']:
-    ax1.plot(sleep_summary_df.index,
-             sleep_summary_df[i],
-             linewidth = '2',
-             linestyle = '--',
-             marker = '.',
-             markersize = 10,
-             label = i)
-ax1.set_xlabel('Date',
-               fontdict = {'fontsize': 20})
-ax1.set_xticklabels(labels = sleep_summary_df.index,
-                    rotation = 45,
-                    ha = 'right')
-ax1.set_ylim(0, 500)
-ax1.set_ylabel('Minutes per Stage',
-               fontdict = {'fontsize': 15})
-ax2 = plt.twinx(ax = ax1)
-ax2.plot(sleep_summary_df.index,
-         sleep_summary_df['efficiency'],
-         color = 'black',
-         linewidth = '3',
-         label = 'efficiency')
-ax2.set_ylim(0, 100)
-ax2.set_ylabel('Sleep Efficiency',
-               fontdict = {'fontsize': 15})
-ax1.grid(which = 'major', axis = 'both')
-lines_1, labels_1 = ax1.get_legend_handles_labels()
-lines_2, labels_2 = ax2.get_legend_handles_labels()
-ax2.legend(lines_1 + lines_2,
-           labels_1 + labels_2,
-           loc = 'lower center',
-           bbox_to_anchor = (0.5, 0.0),
-           ncol = 5,
-           fancybox = True,
-           shadow = True)
-#plt.show()
-
-###################################
-# STACKED BAR FOR ACTIVITY LEVELS #
-###################################
-fig, ax = plt.subplots(figsize = (10, 10))
-activity_level_df.plot.bar(ax = ax,
-                           stacked = True)
-plt.show()
-
 
 # TODO clean this up
-# TODO may need to recreate this dataframe
-# TODO x labels aren't lining up well
+# TODO x labels aren't lining up well with tickers
+# TODO adjust y axis
 ##################################################
 # PLOT SLEEP EFFICIENCY ON TOP OF ACTIVITY LEVEL #
 ##################################################
+df = activity_level_df.join(sleep_summary_df.set_index('dateTime'),
+                            on = 'dateTime')
 fig, ax1 = plt.subplots(figsize = (10, 10))
 ax2 = plt.twinx(ax = ax1)
-temp_df[['LightlyActive', 'FairlyActive', 'VeryActive']].plot(ax = ax1,
-                                                              kind = 'bar',
-                                                              stacked = True,
-                                                              cmap = 'Pastel2')
-temp_df[['wake', 'light', 'deep', 'rem']].plot(ax = ax1,
-                                               linewidth = '2',
-                                               linestyle = '--',
-                                               marker = '.',
-                                               markersize = 10)
-ax1.set_xticklabels(labels = temp_df['dateTime'], rotation = 45)
-temp_df['efficiency'].plot(ax = ax2,
-                           linewidth = '4',
-                           color = 'k')
+df[['LightlyActive', 'FairlyActive', 'VeryActive']].plot(ax = ax1,
+                                                         kind = 'bar',
+                                                         stacked = True,
+                                                         cmap = 'Pastel2')
+df[['wake', 'light', 'deep', 'rem']].plot(ax = ax1,
+                                          linewidth = '2',
+                                          linestyle = '--',
+                                          marker = '.',
+                                          markersize = 10)
+ax1.set_xticklabels(labels = df['dateTime'], rotation = 45)
+df['efficiency'].plot(ax = ax2,
+                      linewidth = '4',
+                      color = 'k')
 ax2.set_ylim(0, 100)
 lines_1, labels_1 = ax1.get_legend_handles_labels()
 lines_2, labels_2 = ax2.get_legend_handles_labels()
@@ -216,7 +171,7 @@ plt.show()
 
 
 
-
+# TODO adjust y limits
 
 fig, axs = plt.subplots(2, gridspec_kw = {'hspace': 0}, figsize = (10, 10))
 fig.suptitle('Sleep  Efficiency', fontsize = 20)
@@ -258,11 +213,12 @@ ax2.legend(lines_1 + lines_2,
 ###################################
 # STACKED BAR FOR ACTIVITY LEVELS #
 ###################################
-activity_level_df.plot.bar(ax = axs[1],
-                           stacked = True)
+activity_level_df[activity_level].plot.bar(ax = axs[1],
+                                           stacked = True)
 axs[1].set_xlabel('Date',
                fontdict = {'fontsize': 20})
 axs[1].set_xlim(sleep_summary_df.index[0], sleep_summary_df.index[-1])
+axs[1].set_xticklabels(labels = df['dateTime'])
 axs[1].legend(loc = 'lower center',
            bbox_to_anchor = (0.5, 0.0),
            ncol = 3,
@@ -271,38 +227,3 @@ axs[1].legend(loc = 'lower center',
 axs[1].grid(which = 'major', axis = 'both')
 fig.text(0.05, 0.4, 'Minutes per Stage', ha = 'center', rotation = 'vertical', fontdict = {'fontsize': 15})
 plt.show()
-
-'''
-data = {'LightlyActive': [314, 253, 282, 292], 'FairlyActive': [34, 22, 26, 35], 'VeryActive': [123, 102, 85, 29], 'efficiency': [93.0, 96.0, 93.0, 96.0], 'wake': [55.0, 44.0, 47.0, 43.0], 'light': [225.0, 260.0, 230.0, 205.0], 'deep': [72.0, 50.0, 60.0, 81.0], 'rem': [99.0, 72.0, 97.0, 85.0]}
-date1 = pd.datetime(2018, 4, 10)
-date = [date1 + pd.Timedelta(days = i) for i in range(4)]
-temp_df = pd.DataFrame(data, index = date)
-
-
-
-fig, ax1 = plt.subplots(figsize = (10, 10))
-fig.set_facecolor('red')
-ax2 = plt.twinx(ax = ax1)
-ax1.patch.set_facecolor('blue')
-ax1.patch.set_alpha(0.5)
-temp_df[['LightlyActive', 'FairlyActive', 'VeryActive']].plot(kind = 'bar', stacked = True, ax = ax1)
-temp_df[['wake', 'light', 'deep', 'rem']].plot(ax = ax1, alpha = 0.5)
-temp_df['efficiency'].plot(ax = ax2)
-plt.show()
-'''
-
-date1 = pd.datetime(2018, 4, 10)
-data = {'LightlyActive': [314, 253, 282, 292],
-        'FairlyActive': [34, 22, 26, 35],
-        'VeryActive': [123, 102, 85, 29],
-        'efficiency': [93.0, 96.0, 93.0, 96.0],
-        'wake': [55.0, 44.0, 47.0, 43.0],
-        'light': [225.0, 260.0, 230.0, 205.0],
-        'deep': [72.0, 50.0, 60.0, 81.0],
-        'rem': [99.0, 72.0, 97.0, 85.0],
-        'date': [date1 + pd.Timedelta(days = i) for i in range(4)]}
-temp_df = pd.DataFrame(data)
-
-temp_df = activity_level_df.join(sleep_summary_df.set_index('dateTime'),
-                                 on = 'dateTime')
-
