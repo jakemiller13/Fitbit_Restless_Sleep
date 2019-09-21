@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 import datetime
 import matplotlib.pyplot as plt
-import matplotlib.ticker as plticker
+import matplotlib.ticker as ticker
 
 # Need to get specifics from https://dev.fitbit.com/apps
 CLIENT_ID = input('Client ID: ')
@@ -131,7 +131,6 @@ sleep_summary_df[['wake', 'light', 'deep', 'rem']].plot(kind = 'box')
 
 
 # TODO clean this up
-# TODO x labels aren't lining up well with tickers
 # TODO adjust y axis
 ##################################################
 # PLOT SLEEP EFFICIENCY ON TOP OF ACTIVITY LEVEL #
@@ -139,6 +138,8 @@ sleep_summary_df[['wake', 'light', 'deep', 'rem']].plot(kind = 'box')
 df = activity_level_df.join(sleep_summary_df.set_index('dateTime'),
                             on = 'dateTime')
 fig, ax1 = plt.subplots(figsize = (10, 10))
+fig.suptitle('Sleep Efficiency vs. Activity Levels',
+             fontsize = 20)
 ax2 = plt.twinx(ax = ax1)
 df[['LightlyActive', 'FairlyActive', 'VeryActive']].plot(ax = ax1,
                                                          kind = 'bar',
@@ -149,20 +150,27 @@ df[['wake', 'light', 'deep', 'rem']].plot(ax = ax1,
                                           linestyle = '--',
                                           marker = '.',
                                           markersize = 10)
-ax1.set_xticklabels(labels = df['dateTime'], rotation = 45)
+ax1.set_ylabel('Sleep/Activity Minutes', fontsize = 15)
+date_range = pd.date_range(start_date - datetime.timedelta(days = 2),
+                           end_date,
+                           freq = '2D')
+ax1.set_xticklabels(pd.Series(date_range).apply(lambda x: x.date()))
+ax1.xaxis.set_major_locator(ticker.MultipleLocator(2))
 df['efficiency'].plot(ax = ax2,
                       linewidth = '4',
                       color = 'k')
 ax2.set_ylim(0, 100)
+ax2.set_ylabel('Sleep Efficiency', fontsize = 15)
 lines_1, labels_1 = ax1.get_legend_handles_labels()
 lines_2, labels_2 = ax2.get_legend_handles_labels()
 ax1.legend(lines_1 + lines_2,
            labels_1 + labels_2,
            loc = 'lower center',
            bbox_to_anchor = (0.5, 1.0),
-           ncol = 5,
+           ncol = 4,
            fancybox = True,
            shadow = True)
+fig.autofmt_xdate()
 plt.show()
 
 
