@@ -135,6 +135,9 @@ sleep_summary_df['dateTime'] = pd.to_datetime(sleep_summary_df['dateTime'])
 sleep_summary_df.drop(columns = ['asleep', 'awake', 'restless'],
                       inplace = True)
 
+############
+# BOX PLOT #
+############
 # TODO Improve this plot
 sleep_summary_df[['wake', 'light', 'deep', 'rem']].plot(kind = 'box')
 
