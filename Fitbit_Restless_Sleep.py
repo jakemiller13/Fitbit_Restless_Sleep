@@ -110,13 +110,22 @@ sleep_data = auth2_client.time_series('sleep',
                                       base_date = start_date,
                                       end_date = end_date)
 for date in sleep_data['sleep'][::-1]:
+    # Minutes in each stage
     temp_df = pd.DataFrame(date['levels']['summary']).loc['minutes']
+    # Sleep efficiency
     temp_df = temp_df.append(pd.Series(date['efficiency'])\
                              .rename({0: 'efficiency'}))
+    # Asleep before 11 (1 if True, 0 if False)
+    start_time = pd.to_datetime(date['startTime']).time()
+    temp_df = temp_df.append(pd.Series(
+                             int(start_time < datetime.time(23, 00, 00))).\
+                             rename({0: 'before_11'}))
+    
     minutes_data = pd.Series(temp_df.rename(date['dateOfSleep']))
     sleep_summary_df = sleep_summary_df.append(minutes_data)
 sleep_summary_df = sleep_summary_df[['efficiency', 'wake', 'light', 'deep',
-                                     'rem', 'awake', 'restless', 'asleep']]
+                                     'rem', 'awake', 'restless', 'asleep',
+                                     'before_11']]
 sleep_summary_df = sleep_summary_df.reset_index()\
                                    .rename({'index':'dateTime'}, axis = 1)
 sleep_summary_df['dateTime'] = pd.to_datetime(sleep_summary_df['dateTime'])
