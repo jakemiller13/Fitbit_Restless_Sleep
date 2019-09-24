@@ -65,7 +65,7 @@ def plot_sleep_levels(sleep_data):
 ############################
 # DEFINTE DATES TO LOOK AT #
 ############################
-start_date = datetime.datetime(2018, 3, 31)
+start_date = datetime.datetime(2019, 9, 1)
 period = 30
 end_date = start_date + datetime.timedelta(days = period)
 
@@ -97,6 +97,7 @@ for level in activity_level:
     activity_level_df = activity_level_df.join(activity_df.\
                                                set_index('dateTime'),
                                                how = 'outer')
+# Dataframe cleanup
 activity_level_df = activity_level_df.reset_index()
 activity_level_df['dateTime'] = pd.to_datetime(activity_level_df['dateTime'])
 
@@ -106,23 +107,26 @@ activity_level_df['dateTime'] = pd.to_datetime(activity_level_df['dateTime'])
 # GET SLEEP DATA FOR (MAX) 100 DAYS #
 #####################################
 sleep_summary_df = pd.DataFrame()
+
 sleep_data = auth2_client.time_series('sleep',
                                       base_date = start_date,
                                       end_date = end_date)
 for date in sleep_data['sleep'][::-1]:
     # Minutes in each stage
-    temp_df = pd.DataFrame(date['levels']['summary']).loc['minutes']
+    sleep_df = pd.DataFrame(date['levels']['summary']).loc['minutes']
     # Sleep efficiency
-    temp_df = temp_df.append(pd.Series(date['efficiency'])\
+    sleep_df = sleep_df.append(pd.Series(date['efficiency'])\
                              .rename({0: 'efficiency'}))
     # Asleep before 11 (1 if True, 0 if False)
     start_time = pd.to_datetime(date['startTime']).time()
-    temp_df = temp_df.append(pd.Series(
+    sleep_df = sleep_df.append(pd.Series(
                              int(start_time < datetime.time(23, 00, 00))).\
                              rename({0: 'before_11'}))
     
-    minutes_data = pd.Series(temp_df.rename(date['dateOfSleep']))
+    minutes_data = pd.Series(sleep_df.rename(date['dateOfSleep']))
     sleep_summary_df = sleep_summary_df.append(minutes_data)
+
+# Dataframe cleanup
 sleep_summary_df = sleep_summary_df[['efficiency', 'wake', 'light', 'deep',
                                      'rem', 'awake', 'restless', 'asleep',
                                      'before_11']]
@@ -142,13 +146,14 @@ sleep_summary_df.drop(columns = ['asleep', 'awake', 'restless'],
 sleep_summary_df[['wake', 'light', 'deep', 'rem']].plot(kind = 'box')
 
 
-# TODO clean this up
+# Join dataframes
+df = activity_level_df.join(sleep_summary_df.set_index('dateTime'),
+                            on = 'dateTime')
+
 # TODO adjust y axis
 ##################################################
 # PLOT SLEEP EFFICIENCY ON TOP OF ACTIVITY LEVEL #
 ##################################################
-df = activity_level_df.join(sleep_summary_df.set_index('dateTime'),
-                            on = 'dateTime')
 fig, ax1 = plt.subplots(figsize = (10, 10))
 fig.suptitle('Sleep Efficiency vs. Activity Levels',
              fontsize = 20)
@@ -170,8 +175,16 @@ ax1.set_xticklabels(pd.Series(date_range).apply(lambda x: x.date()))
 ax1.xaxis.set_major_locator(ticker.MultipleLocator(2))
 df['efficiency'].plot(ax = ax2,
                       linewidth = '4',
-                      color = 'k')
-ax2.set_ylim(0, 100)
+                      color = 'k',
+                      label = 'Sleep Efficiency')
+# Plot markers where asleep after 11
+df[df['before_11'] == 0]['efficiency'].plot(kind = 'line',
+                                            marker = '^',
+                                            markersize = 10,
+                                            linestyle = 'none',
+                                            color = 'red',
+                                            label = 'Asleep after 11PM')
+ax2.set_ylim(50, 100)
 ax2.set_ylabel('Sleep Efficiency', fontsize = 15)
 lines_1, labels_1 = ax1.get_legend_handles_labels()
 lines_2, labels_2 = ax2.get_legend_handles_labels()
@@ -179,7 +192,7 @@ ax1.legend(lines_1 + lines_2,
            labels_1 + labels_2,
            loc = 'lower center',
            bbox_to_anchor = (0.5, 1.0),
-           ncol = 4,
+           ncol = 5,
            fancybox = True,
            shadow = True)
 fig.autofmt_xdate()
@@ -191,7 +204,9 @@ plt.show()
 
 
 
-# TODO adjust y limits
+######################################################
+# PLOTTED USING 2 SUBPLOTS, IS THIS BETTER OR WORSE? #
+######################################################
 
 fig, axs = plt.subplots(2, gridspec_kw = {'hspace': 0}, figsize = (10, 10))
 fig.suptitle('Sleep  Efficiency', fontsize = 20)
