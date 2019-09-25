@@ -8,7 +8,6 @@ Created on Tue Sep 10 13:26:38 2019
 import fitbit
 from fitbit import gather_keys_oauth2 as Oauth2
 import pandas as pd
-import numpy as np
 import datetime
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
@@ -65,22 +64,13 @@ def plot_sleep_levels(sleep_data):
 ############################
 # DEFINTE DATES TO LOOK AT #
 ############################
-start_date = datetime.datetime(2019, 9, 1)
+start_date = datetime.datetime(2019, 9, 10)
 period = 30
 end_date = start_date + datetime.timedelta(days = period)
 
-###############
-# GET HR DATA #
-###############
-date = format_date((2019, 5, 5)) # start date of last challenge
-hr_data = get_intraday_hr_data(date)
-hr_df = pd.DataFrame(hr_data['activities-heart-intraday']['dataset'])
-hr_df['time'] = hr_df['time'].apply(pd.to_datetime)
-hr_df = hr_df.set_index('time')
-
-###########################
-# GET ACTIVE MINUTES DATA #
-###########################
+#############################################
+# GET ACTIVE MINUTES DATA FOR (PERIOD) DAYS #
+#############################################
 activity_level_df = pd.DataFrame()
 
 # Recall 1440 minutes per day, so Sedentary = 1440 - (other levels)
@@ -92,8 +82,10 @@ for level in activity_level:
                                              end_date = end_date)
     activity_df = pd.DataFrame(activity_data['activities-minutes{}'.\
                                              format(level)]).\
-                               rename({'value': level}, axis = 1)
+                                             rename({'value': level},
+                                                    axis = 1)
     activity_df[level] = pd.to_numeric(activity_df[level])
+    # Need to set index otherwise columns overlapping creates ValueError
     activity_level_df = activity_level_df.join(activity_df.\
                                                set_index('dateTime'),
                                                how = 'outer')
@@ -101,11 +93,9 @@ for level in activity_level:
 activity_level_df = activity_level_df.reset_index()
 activity_level_df['dateTime'] = pd.to_datetime(activity_level_df['dateTime'])
 
-# TODO clean up so these dataframes get created in similar ways
-
-#####################################
-# GET SLEEP DATA FOR (MAX) 100 DAYS #
-#####################################
+####################################
+# GET SLEEP DATA FOR (PERIOD) DAYS #
+####################################
 sleep_summary_df = pd.DataFrame()
 
 sleep_data = auth2_client.time_series('sleep',
@@ -115,12 +105,12 @@ for date in sleep_data['sleep'][::-1]:
     # Minutes in each stage
     sleep_df = pd.DataFrame(date['levels']['summary']).loc['minutes']
     # Sleep efficiency
-    sleep_df = sleep_df.append(pd.Series(date['efficiency'])\
-                             .rename({0: 'efficiency'}))
-    # Asleep before 11 (1 if True, 0 if False)
-    start_time = pd.to_datetime(date['startTime']).time()
+    sleep_df = sleep_df.append(pd.Series(date['efficiency']).\
+                               rename({0: 'efficiency'}))
+    # Check if asleep before 11 (1 if True, 0 if False)
+    asleep_time = pd.to_datetime(date['startTime']).time()
     sleep_df = sleep_df.append(pd.Series(
-                             int(start_time < datetime.time(23, 00, 00))).\
+                             int(asleep_time < datetime.time(23, 00, 00))).\
                              rename({0: 'before_11'}))
     
     minutes_data = pd.Series(sleep_df.rename(date['dateOfSleep']))
@@ -130,14 +120,12 @@ for date in sleep_data['sleep'][::-1]:
 sleep_summary_df = sleep_summary_df[['efficiency', 'wake', 'light', 'deep',
                                      'rem', 'awake', 'restless', 'asleep',
                                      'before_11']]
-sleep_summary_df = sleep_summary_df.reset_index()\
-                                   .rename({'index':'dateTime'}, axis = 1)
+sleep_summary_df = sleep_summary_df.reset_index().\
+                                   rename({'index':'dateTime'}, axis = 1)
 sleep_summary_df['dateTime'] = pd.to_datetime(sleep_summary_df['dateTime'])
-
-# If Fitbit can't register HR, only tracks "asleep", "awake", "restless"
-# Don't correspond to more detailed info (e.g wake vs awake different values)
-sleep_summary_df.drop(columns = ['asleep', 'awake', 'restless'],
-                      inplace = True)
+# Fitbit refers to the night of sleep by the date of the morning you wake up
+sleep_summary_df['dateTime'] = sleep_summary_df['dateTime'].apply(
+                               lambda x: x - datetime.timedelta(days = 1))
 
 ############
 # BOX PLOT #
@@ -147,10 +135,13 @@ sleep_summary_df[['wake', 'light', 'deep', 'rem']].plot(kind = 'box')
 
 
 # Join dataframes
-df = activity_level_df.join(sleep_summary_df.set_index('dateTime'),
+# If Fitbit can't register HR, only tracks "asleep", "awake", "restless"
+# Don't correspond to more detailed info (e.g wake vs awake different values)
+df = activity_level_df.join(sleep_summary_df.drop(
+                            columns = ['asleep', 'awake', 'restless']).\
+                            set_index('dateTime'),
                             on = 'dateTime')
 
-# TODO adjust y axis
 ##################################################
 # PLOT SLEEP EFFICIENCY ON TOP OF ACTIVITY LEVEL #
 ##################################################
@@ -161,18 +152,25 @@ ax2 = plt.twinx(ax = ax1)
 df[['LightlyActive', 'FairlyActive', 'VeryActive']].plot(ax = ax1,
                                                          kind = 'bar',
                                                          stacked = True,
-                                                         cmap = 'Pastel2')
+                                                         cmap = 'Accent')
 df[['wake', 'light', 'deep', 'rem']].plot(ax = ax1,
                                           linewidth = '2',
                                           linestyle = '--',
                                           marker = '.',
-                                          markersize = 10)
-ax1.set_ylabel('Sleep/Activity Minutes', fontsize = 15)
+                                          markersize = 10,
+                                          cmap = 'Set1')
+# Shade weekends
+for i, day in enumerate(df['dateTime']):
+    if day.weekday() / 4 == 1:
+        ax1.axvspan(i - 0.5, i + 1.5,
+                    facecolor = 'gray',
+                    alpha = 0.2)
 date_range = pd.date_range(start_date - datetime.timedelta(days = 2),
                            end_date,
                            freq = '2D')
 ax1.set_xticklabels(pd.Series(date_range).apply(lambda x: x.date()))
 ax1.xaxis.set_major_locator(ticker.MultipleLocator(2))
+ax1.set_ylabel('Sleep/Activity Minutes', fontsize = 15)
 df['efficiency'].plot(ax = ax2,
                       linewidth = '4',
                       color = 'k',
@@ -197,8 +195,6 @@ ax1.legend(lines_1 + lines_2,
            shadow = True)
 fig.autofmt_xdate()
 plt.show()
-
-
 
 
 
