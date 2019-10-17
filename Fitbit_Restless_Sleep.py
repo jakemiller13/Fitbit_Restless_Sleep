@@ -4,6 +4,12 @@ Created on Tue Sep 10 13:26:38 2019
 
 @author: jmiller
 """
+################
+# USEFUL LINKS #
+################
+# https://towardsdatascience.com/
+#         collect-your-own-fitbit-data-with-python-ff145fa10873
+# https://github.com/orcasgit/python-fitbit
 
 import fitbit
 from fitbit import gather_keys_oauth2 as Oauth2
@@ -12,7 +18,7 @@ import datetime
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
-# Need to get specifics from https://dev.fitbit.com/apps
+# Get these from https://dev.fitbit.com/apps
 CLIENT_ID = input('Client ID: ')
 CLIENT_SECRET = input('Client Secret: ')
 
@@ -20,7 +26,7 @@ CLIENT_SECRET = input('Client Secret: ')
 server = Oauth2.OAuth2Server(CLIENT_ID, CLIENT_SECRET)
 server.browser_authorize()
 
-# Setup API client (NOTE: updating to v1.2 for Sleep Logs)
+# Setup API client (NOTE: use v1.2 for Sleep Logs)
 ACCESS_TOKEN = str(server.fitbit.client.session.token['access_token'])
 REFRESH_TOKEN = str(server.fitbit.client.session.token['refresh_token'])
 auth2_client = fitbit.Fitbit(CLIENT_ID, CLIENT_SECRET, oauth2 = True,
@@ -28,52 +34,24 @@ auth2_client = fitbit.Fitbit(CLIENT_ID, CLIENT_SECRET, oauth2 = True,
                              refresh_token = REFRESH_TOKEN)
 auth2_client.API_VERSION = 1.2
 
-def format_date(in_date):
-    '''
-    in_date (tuple of integers): (YYYY, MM, DD)
-        NOTE: single digit day/months should be entered as D or M, not DD or MM
-    returns (datetime): YYYY-MM-DD
-    '''
-    date = datetime.date(*in_date)
-    return date.strftime('%Y-%m-%d')
+###############################
+# DATES UNABLE TO FALL ASLEEP #
+###############################
+no_sleep = [pd.Timestamp(2019, 9, 13),
+            pd.Timestamp(2019, 9, 22)]
 
-def get_intraday_hr_data(date):
-    '''
-    date (str): 'YYYY-MM-DD'
-    returns: heart rate date in 1 min intervals for given date
-    '''
-    return auth2_client.intraday_time_series('activities/heart',
-                                             base_date = date,
-                                             detail_level = '1sec')
-
-def plot_sleep_levels(sleep_data):
-    '''
-    Plots a bar chart of sleep levels for 1 day
-    '''
-    sleep_stages = sleep_data['summary']['stages']
-    plt.figure(facecolor = 'w', figsize = (8, 8))
-    plt.bar(range(len(sleep_stages)),
-            list(sleep_stages.values()),
-            align = 'center')
-    plt.xticks(range(len(sleep_stages)), list(sleep_stages.keys()))
-    plt.ylabel('Minutes')
-    plt.grid(axis = 'y')
-    plt.title('Minutes per Stage [{}]'.format(date.date()))
-    plt.show()
-
-############################
-# DEFINTE DATES TO LOOK AT #
-############################
+###########################
+# DEFINE DATES TO LOOK AT #
+###########################
 start_date = datetime.datetime(2019, 9, 10)
 period = 30
 end_date = start_date + datetime.timedelta(days = period)
 
-#############################################
-# GET ACTIVE MINUTES DATA FOR (PERIOD) DAYS #
-#############################################
+####################################
+# ACTIVE MINUTES FOR (PERIOD) DAYS #
+####################################
 activity_level_df = pd.DataFrame()
 
-# Recall 1440 minutes per day, so Sedentary = 1440 - (other levels)
 activity_level = ['LightlyActive', 'FairlyActive', 'VeryActive']
 for level in activity_level:
     activity_data = auth2_client.time_series('activities/minutes{}'\
@@ -85,7 +63,7 @@ for level in activity_level:
                                              rename({'value': level},
                                                     axis = 1)
     activity_df[level] = pd.to_numeric(activity_df[level])
-    # Need to set index otherwise columns overlapping creates ValueError
+    # Need to set_index otherwise columns overlapping creates ValueError
     activity_level_df = activity_level_df.join(activity_df.\
                                                set_index('dateTime'),
                                                how = 'outer')
@@ -93,9 +71,9 @@ for level in activity_level:
 activity_level_df = activity_level_df.reset_index()
 activity_level_df['dateTime'] = pd.to_datetime(activity_level_df['dateTime'])
 
-####################################
-# GET SLEEP DATA FOR (PERIOD) DAYS #
-####################################
+################################
+# SLEEP DATA FOR (PERIOD) DAYS #
+################################
 sleep_summary_df = pd.DataFrame()
 
 sleep_data = auth2_client.time_series('sleep',
@@ -110,9 +88,9 @@ for date in sleep_data['sleep'][::-1]:
     # Check if asleep before 11 (1 if True, 0 if False)
     asleep_time = pd.to_datetime(date['startTime']).time()
     sleep_df = sleep_df.append(pd.Series(
-                             int(asleep_time < datetime.time(23, 00, 00))).\
+                             int(asleep_time < datetime.time(23, 00, 00) and \
+                                 asleep_time > datetime.time(4, 00, 00))).\
                              rename({0: 'before_11'}))
-    
     minutes_data = pd.Series(sleep_df.rename(date['dateOfSleep']))
     sleep_summary_df = sleep_summary_df.append(minutes_data)
 
@@ -180,8 +158,18 @@ df[df['before_11'] == 0]['efficiency'].plot(kind = 'line',
                                             marker = '^',
                                             markersize = 10,
                                             linestyle = 'none',
-                                            color = 'red',
+                                            color = 'cyan',
                                             label = 'Asleep after 11PM')
+# Plot markers where unable to fall asleep
+df[df['dateTime'].isin(no_sleep)]['efficiency'].plot(kind = 'line',
+                                                     marker = 'o',
+                                                     markersize = 17,
+                                                     fillstyle = 'none',
+                                                     linestyle = 'none',
+                                                     color = 'red',
+                                                     markeredgewidth = 2,
+                                                     label = 'Trouble sleeping')
+
 ax2.set_ylim(50, 100)
 ax2.set_ylabel('Sleep Efficiency', fontsize = 15)
 lines_1, labels_1 = ax1.get_legend_handles_labels()
@@ -196,13 +184,9 @@ ax1.legend(lines_1 + lines_2,
 fig.autofmt_xdate()
 plt.show()
 
-
-
-
-
-######################################################
-# PLOTTED USING 2 SUBPLOTS, IS THIS BETTER OR WORSE? #
-######################################################
+##############################################
+# PLOT USING 2 SUBPLOTS FOR A DIFFERENT VIEW #
+##############################################
 
 fig, axs = plt.subplots(2, gridspec_kw = {'hspace': 0}, figsize = (10, 10))
 fig.suptitle('Sleep  Efficiency', fontsize = 20)
