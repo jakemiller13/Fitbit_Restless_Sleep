@@ -111,7 +111,6 @@ sleep_summary_df['dateTime'] = sleep_summary_df['dateTime'].apply(
 # TODO Improve this plot
 sleep_summary_df[['wake', 'light', 'deep', 'rem']].plot(kind = 'box')
 
-
 # Join dataframes
 # If Fitbit can't register HR, only tracks "asleep", "awake", "restless"
 # Don't correspond to more detailed info (e.g wake vs awake different values)
