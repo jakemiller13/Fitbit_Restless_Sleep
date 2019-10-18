@@ -160,14 +160,15 @@ df[df['before_11'] == 0]['efficiency'].plot(kind = 'line',
                                             color = 'cyan',
                                             label = 'Asleep after 11PM')
 # Plot markers where unable to fall asleep
-df[df['dateTime'].isin(no_sleep)]['efficiency'].plot(kind = 'line',
-                                                     marker = 'o',
-                                                     markersize = 17,
-                                                     fillstyle = 'none',
-                                                     linestyle = 'none',
-                                                     color = 'red',
-                                                     markeredgewidth = 2,
-                                                     label = 'Trouble sleeping')
+df[df['dateTime'].isin(no_sleep)]['efficiency'].\
+                                  plot(kind = 'line',
+                                  marker = 'o',
+                                  markersize = 17,
+                                  fillstyle = 'none',
+                                  linestyle = 'none',
+                                  color = 'red',
+                                  markeredgewidth = 2,
+                                  label = 'Trouble sleeping')
 
 ax2.set_ylim(50, 100)
 ax2.set_ylabel('Sleep Efficiency', fontsize = 15)
@@ -239,5 +240,8 @@ axs[1].legend(loc = 'lower center',
            fancybox = True,
            shadow = True)
 axs[1].grid(which = 'major', axis = 'both')
-fig.text(0.05, 0.4, 'Minutes per Stage', ha = 'center', rotation = 'vertical', fontdict = {'fontsize': 15})
+fig.text(0.05, 0.4, 'Minutes per Stage',
+         ha = 'center',
+         rotation = 'vertical',
+         fontdict = {'fontsize': 15})
 plt.show()
